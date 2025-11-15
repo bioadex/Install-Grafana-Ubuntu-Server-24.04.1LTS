@@ -1,0 +1,261 @@
+Using grafana+prometheus+node_exporter for monitoring servers
+
+firstly on the server you must make sure you have node_exporter install     # if you want to monitor more than 1 server make sure node_exporter is installed on each of the server 
+
+You can use ansible, jenkins or terraform to deploy node_exporter on the multiple server 
+
+in my own case i will deploying or install node_exporter on my homeserver as an example 
+
+++++++++++++++++ how to install node_exporter on Ubuntu Server 24.04.5 LTS ++++++++++++++++++++++++++++++++++++
+
+Download Node Exporter
+
+Begin by downloading Node Exporter using the wget command:
+
+Step 1: wget https://github.com/prometheus/node_exporter/releases/download/v1.10.0/node_exporter-1.7.0.linux-amd64.tar.gz       # change the version to desire version
+
+you can google online to check the version you want or better you can download the latest version but not advisable 
+
+also remember depending on your os amd64 is for linux if you are using mac then arm64 
+
+Step 2:  Extract the Download content 
+
+tar xvf node_exporter-1.10.0.linux-amd64.tar.gz
+
+Move the node_exporter binary 
+
+cd node_exporter-1.10.0.linux-amd64
+
+sudo cp node_exporter /usr/local/bin
+
+(opitional) rm -rf ./node_exporter-1.10.0.linux-amd64
+
+
+Step 3: Create a Node Exporter User 
+this is a dedicated user for running the node exporter 
+
+sudo useradd --no-create-home --shell /bin/false node_exporter           # user here is node_exporter
+
+sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter      # assign ownership permission for the node_exporter binary to this user
+
+Step 4: Configure the Node_Exporter Service 
+
+sudo nano /etc/systemd/system/node_exporter.service
+
+Then paste the following configuration into it 
+
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+
+Save and exit the editor 
+
+Ctrl O Press Enter Ctrl X to exit 
+
+Step 5: 
+
+Enable and Start the Node_Exporter Service 
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable node_exporter
+
+sudo systemctl start node_exporter 
+
+sudo systemctl status node_exporter.service  
+
+if you want to restart 
+
+sudo systemctl restart node_exporter.service
+
+
+++++++++++++++++++++++ Setting up Prometheus using Docker Compose ++++++++++++++++++++++++
+
+Firstly you have to have docker compose install on your ubuntu server 
+
+if you do not have you can check my github to see how to install docker and docker compose 
+
+After you have install docker compose 
+
+Follow this step below to install Prometheus 
+
+Step 1: Create a docker compose yaml file 
+
+create a folder 
+
+sudo mkdir prometheus
+
+cd prometheus
+
+sudo touch docker-compose.yml 
+
+sudo nano docker-compose.yml
+
+then copy the file below 
+
+version: '3.8'
+services:
+  prometheus:
+    image: prom/prometheus:latest     # to the best practice to install latest search for a version you want to use online 
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+volumes:
+  prom_data:
+  
+  
+save and exit 
+
+Another way is to download the file from my git repository 
+
+before you run it 
+
+Step 2:
+
+Also need to create a prometheus.yml file in the same prometheus folder where you have the docker-compose.yml 
+
+sudo touch prometheus.yml
+
+sudo nano prometheus.yml
+
+Paste the following into the file 
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets: []
+      scheme: http
+      timeout: 10s
+      api_version: v1
+scrape_configs:
+  - job_name: prometheus
+    honor_timestamps: true
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+        - localhost:9090
+  - job_name: aka-tech-it # Change to whatever you like
+    static_configs:
+      - targets: ['192.168.*.*:9100'] #Change this to your server's IP
+	  
+	  
+
+SAVE and Exit  Look up for the command 
+
+Note Here: do not change anything in the prometheus.yml which is the prometheus Configuration file apart from where i said you should change 
+
+BECAUSE we need that set up later in the grafana 
+
+Step 3:
+
+Deploying or Start Prometheus 
+
+docker compose up -d        # to start the container in a detached mode 
+
+Step 4:
+
+Access Prometheus web interface at http://<ubuntu_server_ip>:9000
+
+Note: Make sure port 9000 is free if not you can change the port or stop the app running on port 9000 
+
+Final Note: if yu have more than one server you can just add the targets to the prometheus.yml below the last targets 
+
+++++++++++++++++++++++++++++ Setting Up Grafana with Docker Compose ++++++++++++++++++++++++++++++++++++++++++++++
+
+I will be setting up the grafana using docker compose 
+
+I believe by now you have docker compose install and you are not new to it anymore 
+
+Step 1:
+
+Create a folder grafana 
+
+sudo mkdir grafana 
+
+cd grafana
+
+sudo touch docker-compose.yml
+
+sudo nano docker-compose.yml 
+
+Paste the following inside 
+
+version: "3.8"
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+     - '3000:3000'
+    volumes:
+      - grafana-storage:/var/lib/grafana
+volumes:
+  grafana-storage: {}
+  
+  
+
+Save and Exit 
+
+Step 2:
+
+docker compose up -d    # to start the container 
+
+Access Grafana at http://<ubuntu_server_ip>:3000 
+
+make sure that the port 3000 is free as well 
+
+You can access your grafana all is well and good 
+
+Now you need to login into grafana 
+
+username : admin
+password: admin
+
+You will be ask to change the password then change it to more secure password
+
+after you need to go 
+
+follow this video before for the rest steps 
+
+https://youtu.be/yrscZ-kGc_Y
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
