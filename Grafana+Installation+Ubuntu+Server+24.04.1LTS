@@ -1,0 +1,61 @@
+Update System Packages
+Before installing, ensure your system is up to date.
+
+bash
+Copy code
+sudo apt update && sudo apt upgrade -y
+Install Required Dependencies
+Grafana requires some additional dependencies. Install them using:
+
+bash
+Copy code
+sudo apt install -y software-properties-common apt-transport-https wget
+Add the Grafana APT Repository
+Grafana provides its own repository. Add it by importing the GPG key and adding the repository.
+
+bash
+Copy code
+# Add Grafana GPG key
+sudo wget -q -O /usr/share/keyrings/grafana.key https://apt.grafana.com/gpg.key
+
+# Add Grafana APT repository
+echo "deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list > /dev/null
+Install Grafana
+Update your package list and install Grafana:
+
+bash
+Copy code
+sudo apt update
+sudo apt install grafana -y
+Enable and Start the Grafana Service
+To ensure Grafana starts on boot and to start it immediately, use:
+
+bash
+Copy code
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+Verify Grafana Installation
+To check if Grafana is running correctly, use:
+
+bash
+Copy code
+sudo systemctl status grafana-server
+You should see the service status as active (running).
+
+Access Grafana Web Interface
+By default, Grafana runs on port 3000. You can access the Grafana web interface by navigating to:
+
+
+Copy code
+http://your_server_ip:3000
+Log in with the default credentials:
+
+Username: admin
+Password: admin
+(Optional) Configure Firewall
+If you’re using UFW (Uncomplicated Firewall), you’ll need to allow access to Grafana’s default port (3000):
+
+bash
+Copy code
+sudo ufw allow 3000/tcp
+sudo ufw reload
